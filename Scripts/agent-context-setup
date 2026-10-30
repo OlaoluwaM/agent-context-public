@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Public-edition adapter: preview or install skill links without overwrites."""
+
+import argparse
+import os
+from pathlib import Path
+import re
+import sys
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--check', action='store_true', help='preview only (default)')
+    mode.add_argument('--apply', action='store_true', help='create missing skill links')
+    parser.add_argument('--provider', choices=('codex', 'claude', 'all'), default='all')
+    parser.add_argument('--target-root', type=Path, default=Path.home())
+    args = parser.parse_args()
+    target_root = args.target_root.expanduser().absolute()
+    providers = ('codex', 'claude') if args.provider == 'all' else (args.provider,)
+
+    skills = {}
+    errors = []
+    for path in sorted((ROOT / 'Skills').glob('*/SKILL.md')):
+        match = re.search(r'^name: ([a-z0-9][a-z0-9-]*)\s*$', path.read_text(), re.M)
+        if not match:
+            errors.append(f'invalid skill name: {path.relative_to(ROOT)}')
+            continue
+        name = match.group(1)
+        if name in skills:
+            errors.append(f'duplicate skill name: {name}')
+        skills[name] = path.parent.resolve()
+    if not skills:
+        errors.append('no skills found')
+
+    links = []
+    for provider in providers:
+        directory = target_root / f'.{provider}' / 'skills'
+        for name, source in skills.items():
+            target = directory / name
+            if target.is_symlink() and os.readlink(target) == str(source):
+                continue
+            if os.path.lexists(target):
+                errors.append(f'conflict: {target}')
+                continue
+            for parent in target.parents:
+                if os.path.lexists(parent) and not parent.is_dir():
+                    errors.append(f'parent is not a directory: {parent}')
+                    break
+            else:
+                links.append((target, source))
+
+    # Preflight the whole selection before writing; a conflicting installation
+    # must not leave a partly installed public edition in the user's profile.
+    if errors:
+        for error in errors:
+            print(error, file=sys.stderr)
+        return 1
+
+    for target, source in links:
+        if args.apply:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(source, target_is_directory=True)
+        print(f'{"created" if args.apply else "would create"}: {target} -> {source}')
+    print(f'agent-context-setup: {"applied" if args.apply else "check complete"}; '
+          f'{len(skills)} skills, {len(links)} new links')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

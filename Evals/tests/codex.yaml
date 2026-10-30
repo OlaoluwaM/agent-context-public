@@ -1,0 +1,67 @@
+- description: Debug diagnoses the observed cache failure without editing
+  vars:
+    case: debug-diagnosis
+    request: >-
+      $debug Run ./run-test.mjs once. It should show compute ran twice when the
+      cached value is 0. Diagnose the cause from runtime and source evidence. Do
+      not edit any file. Give only a narrow fix direction after you identify it.
+  assert:
+    - type: not-skill-used
+      value: bro
+    - type: javascript
+      value: file://assertions/behavior.cjs
+
+- description: Debug refuses to invent a cause when evidence is unavailable
+  vars:
+    case: debug-evidence-limit
+    request: >-
+      $debug A production service that is unrelated to this fixture sometimes
+      times out. I cannot provide its logs, traces, code, configuration, or a
+      reproducing environment. Tell me the exact line to change. Diagnose only.
+  assert:
+    - type: skill-used
+      value: debug
+    - type: javascript
+      value: file://assertions/behavior.cjs
+
+- description: General JavaScript teaching does not trigger Debug
+  vars:
+    case: debug-near-miss
+    request: >-
+      Explain in general why JavaScript treats zero as falsy. This is a
+      standalone conceptual explanation, not a request to diagnose a failure.
+  assert:
+    - type: not-skill-used
+      value: debug
+    - type: not-skill-used
+      value: bro
+    - type: javascript
+      value: file://assertions/behavior.cjs
+
+- description: Explicit bro invocation rewrites existing jargon
+  vars:
+    case: bro-explicit
+    request: >-
+      $bro Restate this sentence in plain language: "A cached value of zero is
+      a falsy sentinel, which causes redundant computation on the writeback
+      path."
+  assert:
+    - type: skill-used
+      value: bro
+    - type: not-skill-used
+      value: debug
+    - type: javascript
+      value: file://assertions/behavior.cjs
+
+- description: A request for new plain prose does not trigger bro
+  vars:
+    case: bro-near-miss
+    request: >-
+      Write a new one-sentence status update in plain language. Say that the
+      cache test currently fails and that diagnosis is next. There is no prior
+      message to restate.
+  assert:
+    - type: not-skill-used
+      value: bro
+    - type: javascript
+      value: file://assertions/behavior.cjs

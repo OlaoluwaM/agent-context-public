@@ -1,0 +1,21 @@
+Agent Context — Public Edition
+Copyright 2026 Olaoluwa Mustapha
+
+This public edition contains selected and adapted material from a private
+agent-context system. Original material is licensed under MIT.
+
+The Show Me skill includes material adapted from HumanLayer's skills repository,
+copyright 2026 HumanLayer, under the MIT License.
+
+The Simple English skill includes material adapted from AminBlg/SimpleEnglish,
+copyright 2026 AminBlg, under the MIT License.
+
+The ELI5 Artifact protocol is inspired by Thariq Shihipar's eli5 workflow in
+anthropics/claude-plugins-community. Its instructions were written afresh for
+this edition; the borrowed prompt is omitted. See THIRD_PARTY.md for the
+upstream license-metadata conflict.
+
+The bro workflow is inspired by a public prompt from Dillon Mulroy. Its
+instruction text was rewritten for this public edition.
+
+See THIRD_PARTY.md and LICENSES/ for source links and upstream license texts.

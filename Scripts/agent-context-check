@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Bounded structure and export-boundary checks; not a general secret scanner."""
+
+from pathlib import Path
+import os
+import re
+import sys
+
+
+ROOT = Path(__file__).resolve().parent.parent
+SKIP = {'.git', '.direnv', 'node_modules', '.work', '.promptfoo', '__pycache__'}
+FORBIDDEN = (
+    'Sessions', 'Review Cache', 'Vendor', '.claude', '.codex', '.obsidian',
+    'Context/User Context.md', 'Context/Memory.md', 'Context/Decisions.md',
+)
+
+
+def main():
+    errors = []
+    for rel in FORBIDDEN:
+        if os.path.lexists(ROOT / rel):
+            errors.append(f'excluded path present: {rel}')
+    required = ('README.md', 'PUBLIC_EDITION.md', 'LICENSE', 'NOTICE',
+                'THIRD_PARTY.md', 'Scripts/agent-context-setup', 'Evals/README.md')
+    for rel in required:
+        if not (ROOT / rel).is_file():
+            errors.append(f'missing required file: {rel}')
+    if (ROOT / 'README.md').is_file() and 'Public Edition' not in (ROOT / 'README.md').read_text():
+        errors.append('README must identify the public edition')
+
+    names = set()
+    for skill in sorted((ROOT / 'Skills').glob('*/SKILL.md')):
+        text = skill.read_text()
+        frontmatter = re.match(r'\A---\n(.*?)\n---\n', text, re.S)
+        if not frontmatter:
+            errors.append(f'missing skill frontmatter: {skill.relative_to(ROOT)}')
+            continue
+        name = re.search(r'^name: ([a-z0-9][a-z0-9-]*)\s*$', frontmatter[1], re.M)
+        if not name or name[1] in names:
+            errors.append(f'invalid or duplicate skill name: {skill.relative_to(ROOT)}')
+        else:
+            names.add(name[1])
+        if not re.search(r'^description: \S', frontmatter[1], re.M):
+            errors.append(f'missing description: {skill.relative_to(ROOT)}')
+
+    for directory, dirs, files in os.walk(ROOT, followlinks=False):
+        dirs[:] = sorted(d for d in dirs if d not in SKIP)
+        for entry in [Path(directory) / d for d in dirs] + [Path(directory) / f for f in files]:
+            rel = entry.relative_to(ROOT).as_posix()
+            if entry.is_symlink():
+                errors.append(f'symlink in export: {rel}')
+            if not entry.is_file() or entry.suffix == '.pyc':
+                continue
+            if entry.name in ('auth.json', 'history.jsonl', '.env') or entry.name.startswith('.env.'):
+                errors.append(f'local state file in export: {rel}')
+            try:
+                text = entry.read_text()
+            except UnicodeDecodeError:
+                errors.append(f'unexpected binary file: {rel}')
+                continue
+            if re.search(r'/(?:home|Users)/[A-Za-z0-9_.-]+/', text):
+                errors.append(f'absolute personal home path: {rel}')
+            if re.search(r'(?:gh[pousr]_[A-Za-z0-9]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)', text):
+                errors.append(f'possible credential: {rel}')
+            if entry.suffix == '.md':
+                for target in re.findall(r'\[\[([^\]|#]+)(?:[^\]]*)\]\]', text):
+                    candidates = [ROOT / (target + '.md'), ROOT / target,
+                                  ROOT / 'Protocols' / (target + '.md'),
+                                  ROOT / 'Context' / (target + '.md')]
+                    if not any(p.is_file() for p in candidates):
+                        errors.append(f'unresolved wikilink in {rel}: {target}')
+
+    if errors:
+        for error in sorted(set(errors)):
+            print(f'FAIL: {error}', file=sys.stderr)
+        return 1
+    print(f'agent-context-check: ok; {len(names)} unique skills; bounded export scan passed')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

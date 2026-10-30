@@ -1,0 +1,25 @@
+{
+  "name": "agent-context-public-evals",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Public-edition synthetic checks for agent skill routing and behavior",
+  "scripts": {
+    "setup:tools": "npm ci --ignore-scripts",
+    "test:assertions": "node --test assertions/behavior.test.cjs",
+    "eval:validate": "node scripts/run.mjs validate",
+    "eval:codex": "node scripts/run.mjs codex",
+    "eval:claude": "node scripts/run.mjs claude",
+    "eval:smoke:codex": "node scripts/run.mjs codex-smoke"
+  },
+  "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.234",
+    "@openai/codex-sdk": "0.144.6",
+    "promptfoo": "0.122.2"
+  },
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "overrides": {
+    "fast-uri": "3.1.6"
+  }
+}

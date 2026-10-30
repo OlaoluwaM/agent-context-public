@@ -1,0 +1,24 @@
+# Local runtime state and personal context
+.env
+.env.*
+!.env.example
+.claude/
+.codex/
+.obsidian/
+Context/User Context.md
+Context/Memory.md
+Context/Decisions.md
+Sessions/
+Review Cache/
+
+# Dependencies and generated results
+**/node_modules/
+Evals/.promptfoo/
+Evals/.work/
+.direnv/
+result
+result-*
+**/__pycache__/
+*.pyc
+.DS_Store
+*.swp

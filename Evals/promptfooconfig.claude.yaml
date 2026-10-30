@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: Claude behavior checks for frequently used agent-context skills
+
+prompts:
+  - |-
+    {{request}}
+
+    Return the result through the required JSON schema. `kind` describes what
+    you actually did. Put the user-facing response in `answer`. Report source
+    files, commands, or observed failures in `evidence`. Set `rootCause` only
+    when evidence supports one. Set `editsMade` accurately.
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    label: claude-skill-routing
+    config:
+      model: "{{env.SKILL_EVAL_CLAUDE_MODEL}}"
+      working_dir: "{{env.SKILL_EVAL_ROOT}}/claude"
+      path_to_claude_code_executable: "{{env.SKILL_EVAL_CLAUDE_BIN}}"
+      setting_sources: [project]
+      skills: [debug, bro]
+      tools: [Read, Grep, Glob, Skill]
+      append_allowed_tools: [Skill]
+      permission_mode: dontAsk
+      max_turns: 8
+      max_budget_usd: 0.25
+      output_format:
+        type: json_schema
+        schema:
+          type: object
+          required: [kind, answer, rootCause, evidence, nextAction, editsMade]
+          additionalProperties: false
+          properties:
+            kind:
+              type: string
+              enum: [diagnosis, evidence_limit, explanation, rewrite, status_update]
+            answer: { type: string }
+            rootCause: { type: [string, "null"] }
+            evidence:
+              type: array
+              items: { type: string }
+            nextAction: { type: [string, "null"] }
+            editsMade: { type: boolean }
+
+defaultTest:
+  options:
+    disableVarExpansion: true
+
+tests: file://tests/claude.yaml
+
+tracing:
+  enabled: true
+
+commandLineOptions:
+  maxConcurrency: 1
+  cache: false
+  share: false

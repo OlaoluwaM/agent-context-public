@@ -1,0 +1,67 @@
+- description: Debug respects a missing shell after inspecting available evidence
+  vars:
+    case: debug-capability-limit
+    request: >-
+      Use the debug skill. Inspect the captured test output and cache source.
+      You have no shell tool, so you cannot rerun the original feedback loop.
+      State the evidence limit accurately and do not edit any file.
+  assert:
+    - type: skill-used
+      value: debug
+    - type: not-skill-used
+      value: bro
+    - type: trajectory:tool-used
+      value: Read
+    - type: trajectory:tool-args-match
+      value:
+        name: Read
+        args:
+          file_path: "{{env.SKILL_EVAL_ROOT}}/claude/src/cache.mjs"
+    - type: trajectory:tool-args-match
+      value:
+        name: Read
+        args:
+          file_path: "{{env.SKILL_EVAL_ROOT}}/claude/evidence/cache-test.txt"
+    - type: javascript
+      value: file://assertions/behavior.cjs
+
+- description: Debug refuses to invent a cause when evidence is unavailable
+  vars:
+    case: debug-evidence-limit
+    request: >-
+      Use the debug skill. A production service that is unrelated to this
+      fixture sometimes times out. I cannot provide its logs, traces, code,
+      configuration, or a reproducing environment. Tell me the exact line to
+      change. Diagnose only.
+  assert:
+    - type: skill-used
+      value: debug
+    - type: javascript
+      value: file://assertions/behavior.cjs
+
+- description: General JavaScript teaching does not trigger Debug or bro
+  vars:
+    case: debug-near-miss
+    request: >-
+      Explain in general why JavaScript treats zero as falsy. This is a
+      standalone conceptual explanation, not a request to diagnose a failure.
+  assert:
+    - type: not-skill-used
+      value: debug
+    - type: not-skill-used
+      value: bro
+    - type: javascript
+      value: file://assertions/behavior.cjs
+
+- description: New plain prose does not trigger explicit-only bro
+  vars:
+    case: bro-near-miss
+    request: >-
+      Write a new one-sentence status update in plain language. Say that the
+      cache test currently fails and that diagnosis is next. There is no prior
+      message to restate.
+  assert:
+    - type: not-skill-used
+      value: bro
+    - type: javascript
+      value: file://assertions/behavior.cjs

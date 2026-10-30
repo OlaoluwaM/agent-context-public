@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: Codex behavior checks for frequently used agent-context skills
+
+prompts:
+  - |-
+    {{request}}
+
+    Return the result through the required JSON schema. `kind` describes what
+    you actually did. Put the user-facing response in `answer`. Report source
+    files, commands, or observed failures in `evidence`. Set `rootCause` only
+    when evidence supports one. Set `editsMade` accurately.
+
+providers:
+  - id: openai:codex-sdk
+    label: codex-skill-routing
+    config:
+      model: "{{env.SKILL_EVAL_CODEX_MODEL}}"
+      model_reasoning_effort: low
+      working_dir: "{{env.SKILL_EVAL_ROOT}}/codex"
+      codex_path_override: "{{env.SKILL_EVAL_CODEX_BIN}}"
+      skip_git_repo_check: true
+      sandbox_mode: read-only
+      approval_policy: never
+      network_access_enabled: false
+      web_search_enabled: false
+      enable_streaming: true
+      deep_tracing: true
+      cli_env:
+        CODEX_HOME: "{{env.SKILL_EVAL_CODEX_HOME}}"
+      output_schema:
+        type: object
+        required: [kind, answer, rootCause, evidence, nextAction, editsMade]
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            enum: [diagnosis, evidence_limit, explanation, rewrite, status_update]
+          answer: { type: string }
+          rootCause: { type: [string, "null"] }
+          evidence:
+            type: array
+            items: { type: string }
+          nextAction: { type: [string, "null"] }
+          editsMade: { type: boolean }
+
+defaultTest:
+  options:
+    disableVarExpansion: true
+
+tests: file://tests/codex.yaml
+
+tracing:
+  enabled: true
+
+commandLineOptions:
+  maxConcurrency: 1
+  cache: false
+  share: false
